@@ -7,6 +7,10 @@
     Das Programm verwaltet Gegenstände eines Rollenspiel-Inventars.
     Items können hinzugefügt, entfernt, sortiert, ausgewertet,
     gespeichert und wieder geladen werden.
+
+    Copyright:
+    © 2026 Julian Krauß
+    Alle Rechte vorbehalten.
 */
 
 #include <iostream>
