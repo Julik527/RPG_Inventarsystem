@@ -1,3 +1,14 @@
+/*
+    Projekt: RPG-Inventarsystem
+    Autor: Julian Krauß | ITA 09/25
+    Fach: Programmiertechnik
+
+    Beschreibung:
+    Das Programm verwaltet Gegenstände eines Rollenspiel-Inventars.
+    Items können hinzugefügt, entfernt, sortiert, ausgewertet,
+    gespeichert und wieder geladen werden.
+*/
+
 #include <iostream>
 #include <vector>
 #include <string>
@@ -9,6 +20,7 @@
 
 using namespace std;
 
+// Mögliche Item-Typen
 enum class Typ
 {
     Waffe = 1,
@@ -16,6 +28,7 @@ enum class Typ
     Ruestung
 };
 
+// Daten eines Gegenstands
 struct Item
 {
     string name;
@@ -25,6 +38,7 @@ struct Item
     int staerke;
 };
 
+// Wandelt den Typ in Text um
 string typZuText(Typ typ)
 {
     if (typ == Typ::Waffe)
@@ -35,11 +49,13 @@ string typZuText(Typ typ)
     return "Ruestung";
 }
 
+// Fügt ein neues Item zum Inventar hinzu
 void itemHinzufuegen(vector<Item>& inv, Item neu)
 {
     inv.push_back(neu);
 }
 
+// Entfernt ein Item anhand seines Namens
 void itemEntfernen(vector<Item>& inv, const string& name)
 {
     for (size_t i = 0; i < inv.size(); i++)
@@ -55,6 +71,7 @@ void itemEntfernen(vector<Item>& inv, const string& name)
     cout << "Item nicht gefunden.\n";
 }
 
+// Berechnet das Gesamtgewicht des Inventars
 int gesamtGewicht(const vector<Item>& inv)
 {
     int gesamt = 0;
@@ -65,11 +82,13 @@ int gesamtGewicht(const vector<Item>& inv)
     return gesamt;
 }
 
+// Prüft, ob das Gewicht innerhalb des Limits liegt
 bool kannTragen(const vector<Item>& inv, int maxGewicht)
 {
     return gesamtGewicht(inv) <= maxGewicht;
 }
 
+// Sucht das Item mit dem besten Wert-Gewicht-Verhältnis
 Item bestesItem(const vector<Item>& inv)
 {
     Item bestes = inv[0];
@@ -96,6 +115,7 @@ Item bestesItem(const vector<Item>& inv)
     return bestes;
 }
 
+// Gibt alle Items als Tabelle aus
 void inventarAnzeigen(const vector<Item>& inv)
 {
     if (inv.empty())
@@ -126,6 +146,7 @@ void inventarAnzeigen(const vector<Item>& inv)
     cout << "Gesamtgewicht: " << gesamtGewicht(inv) << "\n";
 }
 
+// Sortiert nach Wert, höchster Wert zuerst
 void nachWertSortieren(vector<Item>& inv)
 {
     sort(inv.begin(), inv.end(),
@@ -135,6 +156,7 @@ void nachWertSortieren(vector<Item>& inv)
         });
 }
 
+// Sortiert nach Gewicht, leichtestes Item zuerst
 void nachGewichtSortieren(vector<Item>& inv)
 {
     sort(inv.begin(), inv.end(),
@@ -144,6 +166,7 @@ void nachGewichtSortieren(vector<Item>& inv)
         });
 }
 
+// Zählt die Items pro Typ mit einer map
 void typenAnzeigen(const vector<Item>& inv)
 {
     map<string, int> anzahl;
@@ -155,6 +178,7 @@ void typenAnzeigen(const vector<Item>& inv)
         cout << eintrag.first << ": " << eintrag.second << '\n';
 }
 
+// Ermittelt das stärkste Item mit find_if
 void staerkstesItemAnzeigen(const vector<Item>& inv)
 {
     if (inv.empty())
@@ -181,6 +205,7 @@ void staerkstesItemAnzeigen(const vector<Item>& inv)
          << " (" << gefunden->staerke << ")\n";
 }
 
+// Speichert das Inventar in einer Textdatei
 void inventarSpeichern(const vector<Item>& inv, const string& dateiname)
 {
     ofstream datei(dateiname);
@@ -195,6 +220,7 @@ void inventarSpeichern(const vector<Item>& inv, const string& dateiname)
     }
 }
 
+// Lädt das Inventar aus einer Textdatei
 void inventarLaden(vector<Item>& inv, const string& dateiname)
 {
     ifstream datei(dateiname);
@@ -227,6 +253,7 @@ void inventarLaden(vector<Item>& inv, const string& dateiname)
     }
 }
 
+// Liest ein neues Item über die Konsole ein
 Item itemEingeben()
 {
     Item neu;
@@ -253,6 +280,7 @@ Item itemEingeben()
     return neu;
 }
 
+// Zeigt das Hauptmenü an
 void menue()
 {
     cout << "\n--- RPG Inventarsystem ---\n";
@@ -276,10 +304,12 @@ int main()
     vector<Item> inventar;
     const string dateiname = "inventar.txt";
 
+    // Gespeichertes Inventar beim Start laden
     inventarLaden(inventar, dateiname);
 
     int auswahl = 0;
 
+    // Menü läuft bis zur Auswahl "Beenden"
     while (auswahl != 12)
     {
         menue();
@@ -348,6 +378,7 @@ int main()
         }
     }
 
+    // Beim Beenden automatisch speichern
     inventarSpeichern(inventar, dateiname);
     cout << "Programm beendet.\n";
 
