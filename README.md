@@ -1,54 +1,50 @@
 # RPG-Inventarsystem
 
-Ein Konsolenprogramm in **C++**, das ein Rollenspiel-Inventar verwaltet.
+Ein einfaches C++-Konsolenprogramm für die Verwaltung eines Rollenspiel-Inventars.
 
-Das Projekt wurde im Fach **Programmiertechnik** erstellt und demonstriert den praktischen Einsatz zentraler C++-Grundlagen und STL-Komponenten.
+## Projekt
 
-## Projektinformationen
-
-- **Autor:** Julian Krauß
-- **Klasse:** ITA 09/25
-- **Ausbildung:** Informationstechnischer Assistent
-- **Sprache:** C++
-- **Standard:** C++17
-- **Version:** 1.1
-- **Stand:** 01.10.2026
-
-## Projektstruktur
-
-```text
-RPG_Inventarsystem/
-├── src/
-│   └── main.cpp
-├── Aufgabenstellung.MD
-├── README.md
-└── .gitignore
-```
-
-Die Datei `inventar.txt` wird beim Ausführen des Programms automatisch erzeugt und nicht in Git eingecheckt.
+- Autor: Julian Krauß
+- Klasse: ITA 09/25
+- Fach: Programmiertechnik
+- Sprache: C++
+- Stand: 01.10.2026
 
 ## Funktionen
 
-Das Programm unterstützt:
+Das Programm kann:
 
-1. Inventar anzeigen
-2. Item hinzufügen
-3. Item entfernen
-4. Nach Wert sortieren
-5. Nach Gewicht sortieren
-6. Items pro Typ anzeigen
-7. Stärkstes Item bestimmen
-8. Bestes Wert-Gewicht-Verhältnis bestimmen
-9. Tragelimit prüfen
-10. Inventar speichern
-11. Inventar laden
-12. Programm beenden
+- Items anzeigen
+- Items hinzufügen und entfernen
+- Gesamtgewicht berechnen
+- Tragelimit prüfen
+- nach Wert sortieren
+- nach Gewicht sortieren
+- Items nach Typ zählen
+- stärkstes Item suchen
+- bestes Wert-Gewicht-Verhältnis bestimmen
+- Inventar speichern und laden
 
-Beim regulären Beenden wird das Inventar automatisch gespeichert.
+## Verwendete C++-Techniken
 
-## Datenstruktur
+Die Aufgabenstellung verlangt bzw. verwendet:
 
-Ein Gegenstand wird mit einer `struct` beschrieben:
+- `struct Item`
+- `vector<Item>`
+- `enum class Typ`
+- `sort` mit Lambda-Funktion
+- `map<string, int>`
+- `find_if`
+- Funktionen mit Referenzen
+- Datei-I/O mit `ifstream` und `ofstream`
+- `stringstream`
+- `setw`
+
+## Grundidee
+
+Alle Gegenstände liegen in einem `vector<Item>`.
+
+Ein Item besitzt:
 
 ```cpp
 struct Item
@@ -61,102 +57,48 @@ struct Item
 };
 ```
 
-Damit werden alle Eigenschaften eines Gegenstands gemeinsam gespeichert.
+Die einzelnen Funktionen arbeiten mit diesem Inventar.
 
-## Item-Typen
-
-Die Gegenstandstypen werden mit `enum class` definiert:
+Beispiele:
 
 ```cpp
-enum class Typ
+void itemHinzufuegen(vector<Item>& inv, Item neu);
+void itemEntfernen(vector<Item>& inv, const string& name);
+int gesamtGewicht(const vector<Item>& inv);
+bool kannTragen(const vector<Item>& inv, int maxGewicht);
+Item bestesItem(const vector<Item>& inv);
+```
+
+## Sortieren
+
+Mit `sort` und einer Lambda-Funktion wird nach Wert oder Gewicht sortiert.
+
+Beispiel:
+
+```cpp
+sort(inv.begin(), inv.end(), [](const Item& a, const Item& b)
 {
-    Waffe = 1,
-    Traenke,
-    Ruestung
-};
+    return a.wert > b.wert;
+});
 ```
 
-Dadurch stehen nur die vorgesehenen Kategorien zur Verfügung.
+## Stärkstes Item
 
-## Verwendete C++-Techniken
+Zuerst wird die höchste Stärke gesucht. Danach findet `find_if` das passende Item.
 
-Im Projekt werden unter anderem eingesetzt:
+## Bestes Item
 
-- `struct`
-- `enum class`
-- `std::vector`
-- `std::map`
-- Referenzen mit `&`
-- `const`
-- Range-based for-Schleifen
-- `std::sort`
-- `std::find_if`
-- Lambda-Ausdrücke
-- `ifstream` und `ofstream`
-- `stringstream`
-- `iomanip`
-- `static_cast`
-
-## Sortierung
-
-### Nach Wert
-
-Die Items werden absteigend sortiert, sodass das wertvollste Item zuerst erscheint.
-
-```cpp
-sort(
-    inv.begin(),
-    inv.end(),
-    [](const Item& a, const Item& b)
-    {
-        return a.wert > b.wert;
-    }
-);
-```
-
-### Nach Gewicht
-
-Die Items werden aufsteigend sortiert, sodass das leichteste Item zuerst erscheint.
-
-## Auswertungen
-
-### Gesamtgewicht
-
-Die Funktion `gesamtGewicht()` addiert das Gewicht aller Items.
-
-### Tragelimit
-
-`kannTragen()` vergleicht das Gesamtgewicht mit einem frei eingegebenen Maximalgewicht.
-
-### Stärkstes Item
-
-Zuerst wird die höchste Stärke ermittelt. Anschließend wird das passende Item mit `std::find_if` gesucht.
-
-### Bestes Item
-
-Das beste Item wird anhand des Verhältnisses
+Das beste Item wird über das Verhältnis
 
 ```text
 Wert / Gewicht
 ```
 
-bestimmt.
+ermittelt.
 
-## Datei-I/O
+## Speichern
 
-Das Inventar wird in der Datei
-
-```text
-inventar.txt
-```
-
-gespeichert.
-
-Eine Zeile besitzt dieses Format:
-
-```text
-Name;Typ;Wert;Gewicht;Staerke
-```
+Das Inventar wird in `inventar.txt` gespeichert.
 
 Beispiel:
 
@@ -164,77 +106,31 @@ Beispiel:
 Eisenschwert;1;120;8;25
 ```
 
-Zum Schreiben wird `ofstream`, zum Lesen `ifstream` verwendet.
-
-## Bedienung
-
-Beim Start erscheint ein Konsolenmenü:
+Bedeutung:
 
 ```text
-========================================
-          RPG INVENTARSYSTEM
-========================================
-1  Inventar anzeigen
-2  Item hinzufuegen
-3  Item entfernen
-4  Nach Wert sortieren
-5  Nach Gewicht sortieren
-6  Items pro Typ anzeigen
-7  Staerkstes Item anzeigen
-8  Bestes Item anzeigen
-9  Tragelimit pruefen
-10 Speichern
-11 Laden
-12 Beenden
-----------------------------------------
-Auswahl:
+Name;Typ;Wert;Gewicht;Staerke
 ```
 
 ## Kompilieren
-
-Benötigt wird ein C++17-kompatibler Compiler.
-
-### g++
 
 ```bash
 g++ -std=c++17 -Wall -Wextra -pedantic src/main.cpp -o RPG_Inventarsystem
 ```
 
-### Start unter Linux/macOS
+## Kurz erklärt
 
-```bash
-./RPG_Inventarsystem
-```
+Für die Vorstellung reicht im Grunde:
 
-Unter Windows kann das Programm beispielsweise mit g++, MinGW oder Visual Studio kompiliert werden.
-
-## Verbesserungen in Version 1.1
-
-- vollständige Head-Beschreibung ergänzt
-- Quellcode strukturiert und ausführlich kommentiert
-- C-Style-Casts durch `static_cast` ersetzt
-- Ausgabe des Hauptmenüs übersichtlicher gestaltet
-- Rückmeldungen beim Hinzufügen und Sortieren ergänzt
-- leeres Inventar bei Auswertungen berücksichtigt
-- ungültige Menüauswahl abgefangen
-- Eingabe des Item-Typs auf Werte 1 bis 3 begrenzt
-- Fehlerbehandlung beim Öffnen der Speicherdatei ergänzt
-- unvollständige Speicherzeilen werden beim Laden übersprungen
-
-## Kurzbeschreibung für die Vorstellung
-
-1. `Item` beschreibt einen Gegenstand.
-2. Das komplette Inventar liegt in einem `vector<Item>`.
-3. Funktionen verändern oder analysieren diesen Vector.
-4. `sort` übernimmt die Sortierung.
-5. `map` zählt die Gegenstandstypen.
-6. `find_if` sucht ein Item anhand einer Bedingung.
-7. `enum class` definiert die zulässigen Item-Typen.
-8. Datei-I/O speichert und lädt das Inventar dauerhaft.
-9. Das Hauptmenü verbindet alle Funktionen zu einem vollständigen Konsolenprogramm.
+1. `Item` speichert die Daten eines Gegenstands.
+2. Der `vector` speichert alle Items.
+3. Funktionen fügen Items hinzu, entfernen sie oder berechnen Werte.
+4. `sort` sortiert das Inventar.
+5. `map` zählt die Item-Typen.
+6. `find_if` sucht das stärkste Item.
+7. Datei-I/O speichert und lädt das Inventar.
+8. Das Menü ruft die Funktionen auf.
 
 ## Copyright
 
-© 2026 Julian Krauß. Alle Rechte vorbehalten.
-
-Verwendung im Rahmen der schulischen Ausbildung.
+© 2026 Julian Krauß
