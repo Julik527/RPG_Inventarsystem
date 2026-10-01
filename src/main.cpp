@@ -1,16 +1,59 @@
 /*
-    Projekt: RPG-Inventarsystem
-    Autor: Julian Krauß | ITA 09/25
-    Fach: Programmiertechnik
+===============================================================================
+ RPG-INVENTARSYSTEM
+===============================================================================
 
-    Beschreibung:
-    Das Programm verwaltet Gegenstände eines Rollenspiel-Inventars.
-    Items können hinzugefügt, entfernt, sortiert, ausgewertet,
-    gespeichert und wieder geladen werden.
+ Projekt:        RPG-Inventarsystem
+ Fach:           Programmiertechnik
+ Ausbildung:     Informationstechnischer Assistent (ITA)
+ Klasse:         ITA 09/25
+ Sprache:        C++
+ Version:        1.1
+ Stand:          01.10.2026
+ Autor:          Julian Krauß
 
-    Copyright:
-    © 2026 Julian Krauß
-    Alle Rechte vorbehalten.
+ Beschreibung:
+ Dieses Konsolenprogramm verwaltet ein Inventar für ein Rollenspiel.
+ Gegenstände können hinzugefügt, entfernt, angezeigt, sortiert, ausgewertet,
+ gespeichert und wieder geladen werden.
+
+ Verwendete C++-Techniken:
+ - struct
+ - enum class
+ - std::vector
+ - std::map
+ - std::sort
+ - std::find_if
+ - Lambda-Ausdrücke
+ - Referenzen und const
+ - Datei-Ein-/Ausgabe mit ifstream und ofstream
+ - stringstream
+ - formatierte Konsolenausgabe mit iomanip
+
+ Hauptfunktionen:
+  1. Inventar anzeigen
+  2. Item hinzufügen
+  3. Item entfernen
+  4. Nach Wert sortieren
+  5. Nach Gewicht sortieren
+  6. Items pro Typ anzeigen
+  7. Stärkstes Item anzeigen
+  8. Bestes Item anhand Wert/Gewicht anzeigen
+  9. Tragelimit prüfen
+ 10. Inventar speichern
+ 11. Inventar laden
+ 12. Programm beenden
+
+ Datenspeicherung:
+ Das Inventar wird in der Datei "inventar.txt" gespeichert.
+ Die Werte werden mit Semikolon voneinander getrennt.
+
+ Copyright:
+ © 2026 Julian Krauß
+ Alle Rechte vorbehalten.
+ Verwendung im Rahmen der schulischen Ausbildung.
+
+===============================================================================
 */
 
 #include <iostream>
@@ -24,7 +67,11 @@
 
 using namespace std;
 
-// Mögliche Item-Typen
+// ============================================================================
+// ITEM-TYPEN
+// ============================================================================
+
+// Legt die erlaubten Kategorien eines Gegenstands fest.
 enum class Typ
 {
     Waffe = 1,
@@ -32,7 +79,11 @@ enum class Typ
     Ruestung
 };
 
-// Daten eines Gegenstands
+// ============================================================================
+// DATENSTRUKTUR
+// ============================================================================
+
+// Speichert alle Eigenschaften eines einzelnen Inventar-Gegenstands.
 struct Item
 {
     string name;
@@ -42,24 +93,29 @@ struct Item
     int staerke;
 };
 
-// Wandelt den Typ in Text um
+// ============================================================================
+// HILFSFUNKTIONEN
+// ============================================================================
+
+// Wandelt einen Enum-Wert in einen lesbaren Text um.
 string typZuText(Typ typ)
 {
     if (typ == Typ::Waffe)
         return "Waffe";
+
     if (typ == Typ::Traenke)
         return "Traenke";
 
     return "Ruestung";
 }
 
-// Fügt ein neues Item zum Inventar hinzu
+// Fügt ein neues Item am Ende des Inventars ein.
 void itemHinzufuegen(vector<Item>& inv, Item neu)
 {
     inv.push_back(neu);
 }
 
-// Entfernt ein Item anhand seines Namens
+// Sucht ein Item anhand seines Namens und entfernt den ersten Treffer.
 void itemEntfernen(vector<Item>& inv, const string& name)
 {
     for (size_t i = 0; i < inv.size(); i++)
@@ -75,24 +131,27 @@ void itemEntfernen(vector<Item>& inv, const string& name)
     cout << "Item nicht gefunden.\n";
 }
 
-// Berechnet das Gesamtgewicht des Inventars
+// Addiert die Gewichte aller Gegenstände im Inventar.
 int gesamtGewicht(const vector<Item>& inv)
 {
     int gesamt = 0;
 
     for (const Item& item : inv)
+    {
         gesamt += item.gewicht;
+    }
 
     return gesamt;
 }
 
-// Prüft, ob das Gewicht innerhalb des Limits liegt
+// Prüft, ob das aktuelle Inventar innerhalb eines vorgegebenen Tragelimits liegt.
 bool kannTragen(const vector<Item>& inv, int maxGewicht)
 {
     return gesamtGewicht(inv) <= maxGewicht;
 }
 
-// Sucht das Item mit dem besten Wert-Gewicht-Verhältnis
+// Ermittelt das Item mit dem besten Verhältnis von Wert zu Gewicht.
+// Voraussetzung: Das Inventar darf beim Aufruf nicht leer sein.
 Item bestesItem(const vector<Item>& inv)
 {
     Item bestes = inv[0];
@@ -102,24 +161,32 @@ Item bestesItem(const vector<Item>& inv)
         double aktuell;
         double bestesVerhaeltnis;
 
+        // Eine Division durch 0 wird verhindert.
         if (item.gewicht == 0)
             aktuell = item.wert;
         else
-            aktuell = (double)item.wert / item.gewicht;
+            aktuell = static_cast<double>(item.wert) / item.gewicht;
 
         if (bestes.gewicht == 0)
             bestesVerhaeltnis = bestes.wert;
         else
-            bestesVerhaeltnis = (double)bestes.wert / bestes.gewicht;
+            bestesVerhaeltnis =
+                static_cast<double>(bestes.wert) / bestes.gewicht;
 
         if (aktuell > bestesVerhaeltnis)
+        {
             bestes = item;
+        }
     }
 
     return bestes;
 }
 
-// Gibt alle Items als Tabelle aus
+// ============================================================================
+// AUSGABE UND SORTIERUNG
+// ============================================================================
+
+// Gibt alle Gegenstände formatiert als Tabelle aus.
 void inventarAnzeigen(const vector<Item>& inv)
 {
     if (inv.empty())
@@ -133,7 +200,8 @@ void inventarAnzeigen(const vector<Item>& inv)
          << setw(12) << "Typ"
          << setw(8) << "Wert"
          << setw(10) << "Gewicht"
-         << setw(10) << "Staerke" << '\n';
+         << setw(10) << "Staerke"
+         << '\n';
 
     cout << string(60, '-') << '\n';
 
@@ -144,45 +212,63 @@ void inventarAnzeigen(const vector<Item>& inv)
              << setw(12) << typZuText(item.type)
              << setw(8) << item.wert
              << setw(10) << item.gewicht
-             << setw(10) << item.staerke << '\n';
+             << setw(10) << item.staerke
+             << '\n';
     }
 
     cout << "Gesamtgewicht: " << gesamtGewicht(inv) << "\n";
 }
 
-// Sortiert nach Wert, höchster Wert zuerst
+// Sortiert das Inventar absteigend nach Wert.
 void nachWertSortieren(vector<Item>& inv)
 {
-    sort(inv.begin(), inv.end(),
+    sort(
+        inv.begin(),
+        inv.end(),
         [](const Item& a, const Item& b)
         {
             return a.wert > b.wert;
-        });
+        }
+    );
 }
 
-// Sortiert nach Gewicht, leichtestes Item zuerst
+// Sortiert das Inventar aufsteigend nach Gewicht.
 void nachGewichtSortieren(vector<Item>& inv)
 {
-    sort(inv.begin(), inv.end(),
+    sort(
+        inv.begin(),
+        inv.end(),
         [](const Item& a, const Item& b)
         {
             return a.gewicht < b.gewicht;
-        });
+        }
+    );
 }
 
-// Zählt die Items pro Typ mit einer map
+// Zählt mit einer map, wie viele Items pro Gegenstandstyp vorhanden sind.
 void typenAnzeigen(const vector<Item>& inv)
 {
     map<string, int> anzahl;
 
     for (const Item& item : inv)
+    {
         anzahl[typZuText(item.type)]++;
+    }
+
+    if (anzahl.empty())
+    {
+        cout << "Inventar ist leer.\n";
+        return;
+    }
 
     for (const auto& eintrag : anzahl)
+    {
         cout << eintrag.first << ": " << eintrag.second << '\n';
+    }
 }
 
-// Ermittelt das stärkste Item mit find_if
+// Ermittelt zunächst die höchste Stärke und sucht anschließend
+// mit find_if das erste Item mit genau diesem Wert.
 void staerkstesItemAnzeigen(const vector<Item>& inv)
 {
     if (inv.empty())
@@ -196,49 +282,77 @@ void staerkstesItemAnzeigen(const vector<Item>& inv)
     for (const Item& item : inv)
     {
         if (item.staerke > maxStaerke)
+        {
             maxStaerke = item.staerke;
+        }
     }
 
-    auto gefunden = find_if(inv.begin(), inv.end(),
+    auto gefunden = find_if(
+        inv.begin(),
+        inv.end(),
         [maxStaerke](const Item& item)
         {
             return item.staerke == maxStaerke;
-        });
+        }
+    );
 
-    cout << "Staerkstes Item: " << gefunden->name
-         << " (" << gefunden->staerke << ")\n";
+    cout << "Staerkstes Item: "
+         << gefunden->name
+         << " ("
+         << gefunden->staerke
+         << ")\n";
 }
 
-// Speichert das Inventar in einer Textdatei
+// ============================================================================
+// DATEIVERARBEITUNG
+// ============================================================================
+
+// Speichert das vollständige Inventar in einer Textdatei.
+// Format: Name;Typ;Wert;Gewicht;Staerke
 void inventarSpeichern(const vector<Item>& inv, const string& dateiname)
 {
     ofstream datei(dateiname);
 
+    if (!datei)
+    {
+        cout << "Fehler: Datei konnte nicht zum Speichern geoeffnet werden.\n";
+        return;
+    }
+
     for (const Item& item : inv)
     {
         datei << item.name << ';'
-              << (int)item.type << ';'
+              << static_cast<int>(item.type) << ';'
               << item.wert << ';'
               << item.gewicht << ';'
               << item.staerke << '\n';
     }
 }
 
-// Lädt das Inventar aus einer Textdatei
+// Lädt ein zuvor gespeichertes Inventar aus einer Textdatei.
 void inventarLaden(vector<Item>& inv, const string& dateiname)
 {
     ifstream datei(dateiname);
 
+    // Beim ersten Programmstart existiert die Datei möglicherweise noch nicht.
     if (!datei)
+    {
         return;
+    }
 
     inv.clear();
+
     string zeile;
 
     while (getline(datei, zeile))
     {
         stringstream ss(zeile);
-        string name, typ, wert, gewicht, staerke;
+
+        string name;
+        string typ;
+        string wert;
+        string gewicht;
+        string staerke;
 
         getline(ss, name, ';');
         getline(ss, typ, ';');
@@ -246,9 +360,17 @@ void inventarLaden(vector<Item>& inv, const string& dateiname)
         getline(ss, gewicht, ';');
         getline(ss, staerke, ';');
 
+        // Unvollständige Zeilen werden übersprungen.
+        if (name.empty() || typ.empty() || wert.empty()
+            || gewicht.empty() || staerke.empty())
+        {
+            continue;
+        }
+
         Item item;
+
         item.name = name;
-        item.type = (Typ)stoi(typ);
+        item.type = static_cast<Typ>(stoi(typ));
         item.wert = stoi(wert);
         item.gewicht = stoi(gewicht);
         item.staerke = stoi(staerke);
@@ -257,7 +379,11 @@ void inventarLaden(vector<Item>& inv, const string& dateiname)
     }
 }
 
-// Liest ein neues Item über die Konsole ein
+// ============================================================================
+// BENUTZEREINGABE
+// ============================================================================
+
+// Liest die Eigenschaften eines neuen Items über die Konsole ein.
 Item itemEingeben()
 {
     Item neu;
@@ -270,6 +396,13 @@ Item itemEingeben()
     cout << "Typ (1=Waffe, 2=Traenke, 3=Ruestung): ";
     cin >> typ;
 
+    // Nur gültige Typ-Werte akzeptieren.
+    while (typ < 1 || typ > 3)
+    {
+        cout << "Ungueltiger Typ. Bitte 1, 2 oder 3 eingeben: ";
+        cin >> typ;
+    }
+
     cout << "Wert: ";
     cin >> neu.wert;
 
@@ -279,15 +412,18 @@ Item itemEingeben()
     cout << "Staerke: ";
     cin >> neu.staerke;
 
-    neu.type = (Typ)typ;
+    neu.type = static_cast<Typ>(typ);
 
     return neu;
 }
 
-// Zeigt das Hauptmenü an
+// Zeigt das Hauptmenü an.
 void menue()
 {
-    cout << "\n--- RPG Inventarsystem ---\n";
+    cout << "\n";
+    cout << "========================================\n";
+    cout << "          RPG INVENTARSYSTEM\n";
+    cout << "========================================\n";
     cout << "1  Inventar anzeigen\n";
     cout << "2  Item hinzufuegen\n";
     cout << "3  Item entfernen\n";
@@ -300,20 +436,26 @@ void menue()
     cout << "10 Speichern\n";
     cout << "11 Laden\n";
     cout << "12 Beenden\n";
+    cout << "----------------------------------------\n";
     cout << "Auswahl: ";
 }
+
+// ============================================================================
+// HAUPTPROGRAMM
+// ============================================================================
 
 int main()
 {
     vector<Item> inventar;
+
     const string dateiname = "inventar.txt";
 
-    // Gespeichertes Inventar beim Start laden
+    // Gespeicherte Daten beim Programmstart laden.
     inventarLaden(inventar, dateiname);
 
     int auswahl = 0;
 
-    // Menü läuft bis zur Auswahl "Beenden"
+    // Das Hauptmenü läuft, bis der Benutzer Option 12 auswählt.
     while (auswahl != 12)
     {
         menue();
@@ -325,23 +467,30 @@ int main()
         }
         else if (auswahl == 2)
         {
-            itemHinzufuegen(inventar, itemEingeben());
+            Item neuesItem = itemEingeben();
+            itemHinzufuegen(inventar, neuesItem);
+
+            cout << "Item hinzugefuegt.\n";
         }
         else if (auswahl == 3)
         {
             string name;
+
             cout << "Name: ";
             cin >> ws;
             getline(cin, name);
+
             itemEntfernen(inventar, name);
         }
         else if (auswahl == 4)
         {
             nachWertSortieren(inventar);
+            cout << "Inventar nach Wert sortiert.\n";
         }
         else if (auswahl == 5)
         {
             nachGewichtSortieren(inventar);
+            cout << "Inventar nach Gewicht sortiert.\n";
         }
         else if (auswahl == 6)
         {
@@ -353,22 +502,34 @@ int main()
         }
         else if (auswahl == 8)
         {
-            if (!inventar.empty())
+            if (inventar.empty())
+            {
+                cout << "Inventar ist leer.\n";
+            }
+            else
             {
                 Item bestes = bestesItem(inventar);
-                cout << "Bestes Item: " << bestes.name << '\n';
+
+                cout << "Bestes Item: "
+                     << bestes.name
+                     << '\n';
             }
         }
         else if (auswahl == 9)
         {
             int maxGewicht;
+
             cout << "Maximales Gewicht: ";
             cin >> maxGewicht;
 
             if (kannTragen(inventar, maxGewicht))
+            {
                 cout << "Inventar kann getragen werden.\n";
+            }
             else
+            {
                 cout << "Inventar ist zu schwer.\n";
+            }
         }
         else if (auswahl == 10)
         {
@@ -380,10 +541,15 @@ int main()
             inventarLaden(inventar, dateiname);
             cout << "Geladen.\n";
         }
+        else if (auswahl != 12)
+        {
+            cout << "Ungueltige Auswahl.\n";
+        }
     }
 
-    // Beim Beenden automatisch speichern
+    // Beim regulären Beenden wird der aktuelle Stand automatisch gespeichert.
     inventarSpeichern(inventar, dateiname);
+
     cout << "Programm beendet.\n";
 
     return 0;
