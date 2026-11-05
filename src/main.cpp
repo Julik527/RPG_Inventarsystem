@@ -80,21 +80,30 @@ void itemEntfernen(vector<Item>& inv, const string& name)
     cout << "Item nicht gefunden.\n";
 }
 
-// Berechnet das Gesamtgewicht.
+// Berechnet das Gewicht ohne Ueberlauf des int-Rueckgabewertes.
 int gesamtGewicht(const vector<Item>& inv)
 {
-    int gesamt = 0;
-
+    long long summe = 0;
     for (const Item& item : inv)
-        gesamt += item.gewicht;
-
-    return gesamt;
+    {
+        summe += item.gewicht;
+        if (summe > numeric_limits<int>::max())
+            return numeric_limits<int>::max(); // Anzeige auf int begrenzt.
+    }
+    return static_cast<int>(summe);
 }
 
-// Prüft das Tragelimit.
+// Fuer das Tragelimit die echte Summe pruefen, auch ueber INT_MAX hinaus.
 bool kannTragen(const vector<Item>& inv, int maxGewicht)
 {
-    return gesamtGewicht(inv) <= maxGewicht;
+    if (maxGewicht < 0) return false;
+    long long summe = 0;
+    for (const Item& item : inv)
+    {
+        summe += item.gewicht;
+        if (summe > maxGewicht) return false;
+    }
+    return true;
 }
 
 // Das beste Wert-Gewicht-Verhaeltnis ohne Division durch null bestimmen.
