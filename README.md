@@ -134,3 +134,21 @@ Für die Vorstellung reicht im Grunde:
 ## Copyright
 
 © 2026 Julian Krauß
+
+## Robuste Eingabe und Dateipruefung (November 2026)
+
+- Zahlen werden als komplette Zeilen eingelesen. Eingaben wie `12abc`, fehlende Zahlen und Werte ausserhalb des gueltigen Bereichs werden erneut abgefragt.
+- Ein Item braucht einen Namen ohne Semikolon, einen gueltigen Typ (1 bis 3), einen nichtnegativen Wert, ein **positives Gewicht** und eine nichtnegative Staerke.
+- Bei einem leeren Inventar wird kein `inv[0]` mehr angesprochen. Das Wert-Gewicht-Verhaeltnis wird ohne Division berechnet.
+- Unvollstaendige oder ungueltige Textdateien werden zurueckgewiesen, ohne das bereits geladene Inventar teilweise zu ersetzen.
+- Bei sehr grossen Gewichten wird der angezeigte `int`-Gesamtwert auf `INT_MAX` begrenzt; die Tragelimitpruefung verwendet die tatsaechliche Summe.
+- Laufzeitdaten stehen in `inventar.txt`, nicht im Repository. Das Speicherformat bleibt `Name;Typ;Wert;Gewicht;Staerke`.
+
+### Automatisierte Pruefung
+
+```bash
+g++ -std=c++17 -Wall -Wextra -Wpedantic -Werror src/main.cpp -o inventar
+python3 tests/smoke_test.py ./inventar
+```
+
+GitHub Actions fuehrt Debug- und Release-Builds mit GCC und Clang aus. Die Tests pruefen das Konsolenmenue, Eingabevalidierung, Speichern/Laden, fehlerhafte Dateien und Grenzwerte. Eine erfolgreiche CI-Ausfuehrung ist im Tab **Actions** nachpruefbar. Das Schreiben der Datei ist nicht atomar; bei Stromausfall waehrend des Speicherns kann die Datei unvollstaendig sein.
