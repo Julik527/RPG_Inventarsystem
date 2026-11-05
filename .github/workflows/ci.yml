@@ -1,0 +1,34 @@
+name: C++17 Inventar-Qualitaet
+on:
+  push:
+    branches: [main]
+    paths: ["src/**", "tests/**", ".github/workflows/ci.yml"]
+  pull_request:
+    paths: ["src/**", "tests/**", ".github/workflows/ci.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [g++, clang++]
+        mode: [Debug, Release]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build (C++17 ohne Warnungen)
+        shell: bash
+        run: |
+          mkdir -p build
+          if [ "${{ matrix.mode }}" = "Release" ]; then
+            FLAGS="-O2 -DNDEBUG"
+          else
+            FLAGS="-O0 -g"
+          fi
+          ${{ matrix.compiler }} -std=c++17 -Wall -Wextra -Wpedantic -Werror $FLAGS src/main.cpp -o build/inventar
+      - name: Konsolen-Regressionstests
+        run: python3 tests/smoke_test.py ./build/inventar
