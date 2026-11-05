@@ -21,6 +21,9 @@
 #include <iomanip>
 #include <fstream>
 #include <sstream>
+#include <limits>
+#include <stdexcept>
+#include <utility>
 
 using namespace std;
 
@@ -48,9 +51,17 @@ string typZuText(Typ typ)
     return "Ruestung";
 }
 
-// Fügt ein Item zum Inventar hinzu.
+// Nur gueltige Gegenstaende aufnehmen: so bleibt das Inventar konsistent.
 void itemHinzufuegen(vector<Item>& inv, Item neu)
 {
+    if (neu.name.find_first_not_of(" \t\r\n") == string::npos ||
+        neu.name.find(';') != string::npos ||
+        neu.wert < 0 || neu.gewicht <= 0 || neu.staerke < 0 ||
+        (neu.type != Typ::Waffe && neu.type != Typ::Traenke &&
+         neu.type != Typ::Ruestung))
+    {
+        throw invalid_argument("Ungueltige Item-Daten.");
+    }
     inv.push_back(neu);
 }
 
@@ -70,37 +81,48 @@ void itemEntfernen(vector<Item>& inv, const string& name)
     cout << "Item nicht gefunden.\n";
 }
 
-// Berechnet das Gesamtgewicht.
+// Berechnet das Gewicht ohne Ueberlauf des int-Rueckgabewertes.
 int gesamtGewicht(const vector<Item>& inv)
 {
-    int gesamt = 0;
-
-    for (const Item& item : inv)
-        gesamt += item.gewicht;
-
-    return gesamt;
-}
-
-// Prüft das Tragelimit.
-bool kannTragen(const vector<Item>& inv, int maxGewicht)
-{
-    return gesamtGewicht(inv) <= maxGewicht;
-}
-
-// Sucht das Item mit dem besten Wert-Gewicht-Verhältnis.
-Item bestesItem(const vector<Item>& inv)
-{
-    Item bestes = inv[0];
-
+    long long summe = 0;
     for (const Item& item : inv)
     {
-        double aktuell = (double)item.wert / item.gewicht;
-        double bestesVerhaeltnis = (double)bestes.wert / bestes.gewicht;
+        summe += item.gewicht;
+        if (summe > numeric_limits<int>::max())
+            return numeric_limits<int>::max(); // Anzeige auf int begrenzt.
+    }
+    return static_cast<int>(summe);
+}
 
-        if (aktuell > bestesVerhaeltnis)
+// Fuer das Tragelimit die echte Summe pruefen, auch ueber INT_MAX hinaus.
+bool kannTragen(const vector<Item>& inv, int maxGewicht)
+{
+    if (maxGewicht < 0) return false;
+    long long summe = 0;
+    for (const Item& item : inv)
+    {
+        summe += item.gewicht;
+        if (summe > maxGewicht) return false;
+    }
+    return true;
+}
+
+// Das beste Wert-Gewicht-Verhaeltnis ohne Division durch null bestimmen.
+Item bestesItem(const vector<Item>& inv)
+{
+    if (inv.empty())
+        throw invalid_argument("Das Inventar ist leer.");
+
+    Item bestes = inv.front();
+    for (const Item& item : inv)
+    {
+        // Kreuzmultiplikation vermeidet Rundungsfehler bei Division.
+        // Gewicht ist durch itemHinzufuegen immer positiv.
+        const long long links = static_cast<long long>(item.wert) * bestes.gewicht;
+        const long long rechts = static_cast<long long>(bestes.wert) * item.gewicht;
+        if (links > rechts)
             bestes = item;
     }
-
     return bestes;
 }
 
@@ -192,77 +214,127 @@ void staerkstesItemAnzeigen(const vector<Item>& inv)
          << " (" << gefunden->staerke << ")\n";
 }
 
-// Speichert das Inventar in einer Textdatei.
-void inventarSpeichern(const vector<Item>& inv, const string& dateiname)
+// Laesst nur vollstaendige Ganzzahlen im int-Wertebereich zu.
+bool parseGanzzahl(const string& text, int& zahl)
 {
-    ofstream datei(dateiname);
+    if (text.empty()) return false;
+    try
+    {
+        size_t gelesen = 0;
+        long long wert = stoll(text, &gelesen);
+        if (gelesen != text.size() ||
+            wert < numeric_limits<int>::min() ||
+            wert > numeric_limits<int>::max())
+            return false;
+        zahl = static_cast<int>(wert);
+        return true;
+    }
+    catch (const exception&)
+    {
+        return false;
+    }
+}
+
+// Speichert nur dann erfolgreich, wenn auch das Schreiben gelungen ist.
+bool inventarSpeichern(const vector<Item>& inv, const string& dateiname)
+{
+    ofstream datei(dateiname, ios::trunc);
+    if (!datei) return false;
 
     for (const Item& item : inv)
     {
         datei << item.name << ';'
-              << (int)item.type << ';'
+              << static_cast<int>(item.type) << ';'
               << item.wert << ';'
               << item.gewicht << ';'
               << item.staerke << '\n';
     }
+    datei.flush();
+    return static_cast<bool>(datei);
 }
 
-// Lädt das Inventar aus einer Textdatei.
-void inventarLaden(vector<Item>& inv, const string& dateiname)
+// Fehlerhafte Dateien duerfen das vorhandene Inventar nicht veraendern.
+bool inventarLaden(vector<Item>& inv, const string& dateiname)
 {
     ifstream datei(dateiname);
+    if (!datei) return false;
 
-    if (!datei) return;
-
-    inv.clear();
+    vector<Item> geladen;
     string zeile;
-
     while (getline(datei, zeile))
     {
-        stringstream ss(zeile);
-        string name, typ, wert, gewicht, staerke;
+        stringstream stream(zeile);
+        string felder[5];
+        for (string& feld : felder)
+            if (!getline(stream, feld, ';')) return false;
+        if (stream.peek() != char_traits<char>::eof()) return false;
 
-        getline(ss, name, ';');
-        getline(ss, typ, ';');
-        getline(ss, wert, ';');
-        getline(ss, gewicht, ';');
-        getline(ss, staerke, ';');
+        int typ = 0, wert = 0, gewicht = 0, staerke = 0;
+        if (!parseGanzzahl(felder[1], typ) ||
+            !parseGanzzahl(felder[2], wert) ||
+            !parseGanzzahl(felder[3], gewicht) ||
+            !parseGanzzahl(felder[4], staerke) ||
+            typ < 1 || typ > 3)
+            return false;
 
-        Item item;
-        item.name = name;
-        item.type = (Typ)stoi(typ);
-        item.wert = stoi(wert);
-        item.gewicht = stoi(gewicht);
-        item.staerke = stoi(staerke);
+        try
+        {
+            itemHinzufuegen(geladen, {felder[0], static_cast<Typ>(typ),
+                                      wert, gewicht, staerke});
+        }
+        catch (const invalid_argument&)
+        {
+            return false;
+        }
+    }
+    if (datei.bad()) return false;
 
-        inv.push_back(item);
+    inv = std::move(geladen);
+    return true;
+}
+
+// Liest die ganze Eingabezeile, damit "12abc" kein gueltiger Wert ist.
+int frageGanzzahl(const string& frage, int minimum, int maximum)
+{
+    for (;;)
+    {
+        cout << frage;
+        string eingabe;
+        if (!getline(cin, eingabe))
+            throw runtime_error("Die Eingabe wurde beendet.");
+
+        int zahl = 0;
+        if (parseGanzzahl(eingabe, zahl) && zahl >= minimum && zahl <= maximum)
+            return zahl;
+        cout << "Ungueltige Zahl. Bitte erneut eingeben.\n";
     }
 }
 
-// Liest ein neues Item ein.
+string frageName(const string& frage)
+{
+    for (;;)
+    {
+        cout << frage;
+        string name;
+        if (!getline(cin, name))
+            throw runtime_error("Die Eingabe wurde beendet.");
+        if (name.find_first_not_of(" \t\r\n") != string::npos &&
+            name.find(';') == string::npos)
+            return name;
+        cout << "Name darf nicht leer sein oder ein Semikolon enthalten.\n";
+    }
+}
+
+// Neues Item mit geprueften Eingaben einlesen.
 Item itemEingeben()
 {
     Item neu;
-    int typ;
-
-    cout << "Name: ";
-    cin >> ws;
-    getline(cin, neu.name);
-
-    cout << "Typ (1=Waffe, 2=Traenke, 3=Ruestung): ";
-    cin >> typ;
-
-    cout << "Wert: ";
-    cin >> neu.wert;
-
-    cout << "Gewicht: ";
-    cin >> neu.gewicht;
-
-    cout << "Staerke: ";
-    cin >> neu.staerke;
-
-    neu.type = (Typ)typ;
-
+    neu.name = frageName("Name: ");
+    const int typ = frageGanzzahl("Typ (1=Waffe, 2=Traenke, 3=Ruestung): ", 1, 3);
+    neu.type = static_cast<Typ>(typ);
+    neu.wert = frageGanzzahl("Wert (ab 0): ", 0, numeric_limits<int>::max());
+    neu.gewicht = frageGanzzahl("Gewicht (mindestens 1): ", 1, numeric_limits<int>::max());
+    neu.staerke = frageGanzzahl("Staerke (ab 0): ", 0, numeric_limits<int>::max());
     return neu;
 }
 
@@ -282,73 +354,71 @@ void menue()
     cout << "10 Speichern\n";
     cout << "11 Laden\n";
     cout << "12 Beenden\n";
-    cout << "Auswahl: ";
 }
 
 int main()
 {
     vector<Item> inventar;
     const string dateiname = "inventar.txt";
-    int auswahl = 0;
+    inventarLaden(inventar, dateiname); // Noch keine Datei: leeres Inventar.
 
-    inventarLaden(inventar, dateiname);
-
-    while (auswahl != 12)
+    try
     {
-        menue();
-        cin >> auswahl;
-
-        if (auswahl == 1)
-            inventarAnzeigen(inventar);
-
-        else if (auswahl == 2)
-            itemHinzufuegen(inventar, itemEingeben());
-
-        else if (auswahl == 3)
+        for (;;)
         {
-            string name;
-            cout << "Name: ";
-            cin >> ws;
-            getline(cin, name);
-            itemEntfernen(inventar, name);
+            menue();
+            const int auswahl = frageGanzzahl("Auswahl: ", 1, 12);
+
+            if (auswahl == 1)
+                inventarAnzeigen(inventar);
+            else if (auswahl == 2)
+                itemHinzufuegen(inventar, itemEingeben());
+            else if (auswahl == 3)
+                itemEntfernen(inventar, frageName("Name: "));
+            else if (auswahl == 4)
+                nachWertSortieren(inventar);
+            else if (auswahl == 5)
+                nachGewichtSortieren(inventar);
+            else if (auswahl == 6)
+                typenAnzeigen(inventar);
+            else if (auswahl == 7)
+                staerkstesItemAnzeigen(inventar);
+            else if (auswahl == 8)
+            {
+                if (inventar.empty())
+                    cout << "Inventar ist leer.\n";
+                else
+                    cout << "Bestes Item: " << bestesItem(inventar).name << '\n';
+            }
+            else if (auswahl == 9)
+            {
+                const int maxGewicht = frageGanzzahl(
+                    "Maximales Gewicht: ", 0, numeric_limits<int>::max());
+                cout << (kannTragen(inventar, maxGewicht)
+                    ? "Inventar kann getragen werden.\n"
+                    : "Inventar ist zu schwer.\n");
+            }
+            else if (auswahl == 10 || auswahl == 12)
+            {
+                cout << (inventarSpeichern(inventar, dateiname)
+                    ? "Inventar gespeichert.\n"
+                    : "Warnung: Inventar konnte nicht gespeichert werden.\n");
+                if (auswahl == 12) break;
+            }
+            else if (auswahl == 11)
+            {
+                cout << (inventarLaden(inventar, dateiname)
+                    ? "Inventar geladen.\n"
+                    : "Datei fehlt oder ist fehlerhaft. Inventar bleibt unveraendert.\n");
+            }
         }
-
-        else if (auswahl == 4)
-            nachWertSortieren(inventar);
-
-        else if (auswahl == 5)
-            nachGewichtSortieren(inventar);
-
-        else if (auswahl == 6)
-            typenAnzeigen(inventar);
-
-        else if (auswahl == 7)
-            staerkstesItemAnzeigen(inventar);
-
-        else if (auswahl == 8 && !inventar.empty())
-            cout << "Bestes Item: " << bestesItem(inventar).name << '\n';
-
-        else if (auswahl == 9)
-        {
-            int maxGewicht;
-            cout << "Maximales Gewicht: ";
-            cin >> maxGewicht;
-
-            if (kannTragen(inventar, maxGewicht))
-                cout << "Inventar kann getragen werden.\n";
-            else
-                cout << "Inventar ist zu schwer.\n";
-        }
-
-        else if (auswahl == 10)
-            inventarSpeichern(inventar, dateiname);
-
-        else if (auswahl == 11)
-            inventarLaden(inventar, dateiname);
+    }
+    catch (const exception& fehler)
+    {
+        cerr << "Fehler: " << fehler.what() << '\n';
+        return 1;
     }
 
-    inventarSpeichern(inventar, dateiname);
     cout << "Programm beendet.\n";
-
     return 0;
 }
